@@ -1,0 +1,13 @@
+name: ananse_env
+
+channels:
+  - r
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - ananse
+  - jupyter
+  - bioconductor-deseq2
+  - conda-forge pygenometracks
+  - bioconda ucsc-bedtobigbed 

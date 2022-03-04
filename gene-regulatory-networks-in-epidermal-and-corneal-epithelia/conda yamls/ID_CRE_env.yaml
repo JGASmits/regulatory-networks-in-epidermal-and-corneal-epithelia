@@ -1,0 +1,19 @@
+name: ID_CRE_env
+channels:
+  - r
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.8.6
+  - gimmemotifs
+  - matplotlib
+  - numpy
+  - pandas
+  - pathlib
+  - seaborn
+  - qnorm
+  - gseapy
+  - notebook
+  - black
+

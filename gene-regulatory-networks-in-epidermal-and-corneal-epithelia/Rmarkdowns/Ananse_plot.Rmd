@@ -1,0 +1,63 @@
+---
+title: "Ananse_heatmap"
+author: "JGASmits"
+date: "8/10/2021"
+output: html_document
+---
+Conda environment used: 'bulk_rna_seq'
+
+```{r setup, include=FALSE}
+data_type = 'only_H3K27ac'
+ananse_path = "/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Ananse_test_data/analysis/peakpred_V4/only_H3K27ac/influence/"
+ESC2KC = paste0(ananse_path, "ESCs_to_KCs/include-promoter/500000/influence.txt")
+ESC2LSC =paste0(ananse_path, "ESCs_to_LSCs/include-promoter/500000/influence.txt")
+KC2LCs_FC = paste0(ananse_path, "KCs_to_LSCs/DEG.tsv")
+ESC2KC = read.csv(ESC2KC,sep = '\t', comment = '#', stringsAsFactors = FALSE)
+ESC2LSC = read.csv(ESC2LSC,sep = '\t', comment = '#', stringsAsFactors = FALSE)
+KC2LCs_FC = read.csv(KC2LCs_FC,sep = '\t', comment = '#', stringsAsFactors = FALSE)
+colnames(ESC2KC) <- paste0(colnames(ESC2KC), "_ESC2KC")
+colnames(ESC2LSC) <- paste0(colnames(ESC2LSC), "_ESC2LSC")
+colnames(KC2LCs_FC) <- paste0(colnames(KC2LCs_FC), "_KC2LSC")
+```
+
+```{r}
+library(matrixStats)
+df <- merge(ESC2KC, ESC2LSC, by.x = 'factor_ESC2KC', by.y = 'factor_ESC2LSC', all.x = TRUE, all.y = TRUE )
+df['factor'] = df$factor_ESC2KC
+df[is.na(df)] <- 0
+
+df <- merge(df, KC2LCs_FC, by.x = 'factor', by.y = 'resid_KC2LSC', all.x = TRUE)
+df['abs_log2FoldChange_KC2LSC'] = abs(df['log2FoldChange_KC2LSC'])
+df$max_direct_targets = rowMaxs(as.matrix(df[,c('directTargets_ESC2LSC','directTargets_ESC2KC')]))
+df$max_influence = rowMaxs(as.matrix(df[,c('sumScaled_ESC2LSC','sumScaled_ESC2KC')]))
+df = df[df["max_direct_targets"] > 500,]
+df = df[df['max_influence'] > 0.4,]
+df$TF_Type <- "remove_me"
+df[df$sumScaled_ESC2KC < 0.4 & df$log2FoldChange_KC2LSC > 1.0,]$TF_Type  <- "Limbal_TF"
+df[df$sumScaled_ESC2LSC < 0.4 & df$log2FoldChange_KC2LSC < -1.0,]$TF_Type  <- "Epidermal_TF"
+df[df$sumScaled_ESC2KC > 0.4 & df$sumScaled_ESC2LSC > 0.4,]$TF_Type <- 'General_Epithelial_TF'
+df <- df[df$TF_Type != 'remove_me',]
+```
+
+```{r pressure, echo=FALSE}
+knitr::opts_chunk$set(fig.width=10, fig.height=10) 
+library(ggrepel)
+library(viridis)
+library(RColorBrewer)
+set.seed(42)
+p <- ggplot(df, aes(x=sumScaled_ESC2KC, y=sumScaled_ESC2LSC))
+
+
+pdf('/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/analysis/ananse_figure.pdf',width=10,height=7,paper='special') 
+p + geom_point(aes(#shape = TF_Type, 
+                   size = max_direct_targets,
+                   fill = log2FoldChange_KC2LSC),pch=21)+ 
+  scale_fill_gradient2(low = "purple", mid = 'grey', high = "orange")+ 
+  geom_label_repel(label=df$factor, size = 5) +
+  scale_size(range = c(3, 15)) + 
+  theme_grey(base_size = 15) + 
+   labs(x = "influence ESC towards KCs",
+        y = 'influence ESC towards LSCs' )
+dev.off()
+
+```

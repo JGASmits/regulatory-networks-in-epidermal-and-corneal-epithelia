@@ -1,0 +1,41 @@
+name: bulk_rna_seq
+channels:
+  - r
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - r-base=4.1.0
+  - r-ggplot2
+  - r-dplyr
+  - r-tidyverse 
+  - r-circlize
+  - r-ggpubr 
+  - r-cowplot
+  - r-rcolorbrewer
+  - r-stringr
+  - r-gridextra
+  - r-ashr
+  - r-msigdbr
+  - bioconductor-biocinstaller
+  - bioconductor-org.hs.eg.db 
+  - bioconductor-complexheatmap
+  - bioconductor-org.hs.eg.db 
+  - bioconductor-clusterprofiler
+  - bioconductor-viseago
+  - bioconductor-deseq2
+  - bioconductor-biomart
+  - bioconductor-biocparallel
+  - bioconductor-vsn
+  - bioconductor-pathview
+  - bioconductor-apeglm
+  - bioconductor-progeny 
+  - bioconductor-genomeinfodb
+  - r-ragg
+  - proj4
+#  - bioconda bioconductor-do.db 
+#  - bioconda r-fastcluster 
+#  - bioconda r-ggdendro
+
+#In a terminal with conda, type
+#$mamba env create -f /ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/markdown_notebooks/conda_envs/bulk_rna_seq.yaml

@@ -1,0 +1,109 @@
+---
+title: "MotifEnrichment"
+output: html_document
+---
+Conda environment used: 'bulk_rna_seq'
+
+```{r setup, include=FALSE}
+library('tidyverse')
+library('ComplexHeatmap')
+library(dplyr)
+library(stringr)
+library(org.Hs.eg.db)
+library(clusterProfiler)
+library(viridis)
+
+#
+# figure_dir <- paste0( '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/analysis/CREs_MotifEnrichment/', Sys.Date())
+figure_dir <- paste0( '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/analysis/CREs_MotifEnrichment/', '2021-29-10')
+
+if (file.exists(figure_dir)){print(paste(figure_dir, 'exists, overwriting files if present'))} else {dir.create(file.path(figure_dir))
+  print('generating output directory')
+}
+#conda env, bulk_rna_seq, updated clusterproflier from 4.0.0 to 4.0.2
+#BiocManager::install("clusterProfiler")
+source('/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/markdown_notebooks/R_functions/GOenrichment_clustprof_JS.R')
+Rowvar <- function(x, ...) {
+    rowSums((x - rowMeans(x, ...))^2, ...)/(dim(x)[2] - 1)
+  }
+```
+
+```{r}
+ maelstrom_dir <- '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/analysis/CREs_MotifEnrichment/2021-29-10/maelstrom/expressedTFs/all_marks/'
+  maelstrom_out <- paste0(maelstrom_dir, 'final.out.txt')
+  motif2TF_file <- paste0(maelstrom_dir, 'nonredundant.motifs.motif2factors.txt')
+  Deseq2_obj <- "/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/analysis/deseq2/output_figures_deseq2/2021-10-26/LSC_KC/KCvsLSC/all_genes.csv"
+  rnaseq_res <- read.csv(Deseq2_obj, sep = ';', row.names = 1, stringsAsFactors=FALSE)
+  #load the maelstrom output:
+  df <- read.csv(maelstrom_out, sep = '\t', row.names = 1, stringsAsFactors=FALSE)
+  zscores <- (df[,grepl('z.score', colnames(df))])
+  zscores$variance <- Rowvar(zscores)
+  zscores$motif <- row.names(zscores)
+  zscores$percentage <- df[,grepl('with.motif', colnames(df))]
+  
+  print('converting_motif_to_TFs')
+  motif2TF <- read.csv(motif2TF_file, sep = '\t', stringsAsFactors=FALSE, comment = '#')
+  motif2TF <- motif2TF[motif2TF$Curated == 'Y',]
+  motif2TF$Factor = toupper(motif2TF$Factor)
+  motif2TF <- unique(motif2TF[c('Motif','Factor')])
+  motif2TF <- na.omit(motif2TF)
+  colnames(motif2TF) <- c('Motif','TFs')
+  
+  zscores$Motif = rownames(zscores)
+  zscores <- merge(zscores, motif2TF, by = 'Motif')
+  rnaseq_res$TFs <- row.names(rnaseq_res)
+  zscores_f <- zscores <- merge(zscores, rnaseq_res, by = 'TFs')
+  #when multiple TF map to a single motif, take the most diferential TF and contribute it to that motif
+  zscores_f <- zscores %>% group_by(Motif) %>% top_n(-1, padj)
+  #When multiple motifs are present for a single TF, take the motif with the highest variance
+  TF_zscores <- zscores_f %>% group_by(TFs) %>% top_n(1, variance)
+  TF_zscores_all <- TF_zscores[order(abs(TF_zscores$variance), decreasing = T),]
+
+
+for (ntop in c(5, 10, 15, 20, 25)){
+  TF_zscores = head(TF_zscores_all,ntop)
+  library(circlize)
+  col_fun = colorRamp2(c(-2, 0, 2), c("orange", "white", "purple"))
+  col_fun2 = colorRamp2(c(0, 2,10), c("white", "grey","black"))
+  
+  TF_zscores$TF_motif <- paste0(TF_zscores$TFs, " : ", TF_zscores$motif)
+  rownames(TF_zscores) <- TF_zscores$TF_motif
+  perc_annotation <- rowAnnotation(percentage = TF_zscores$percentage, 
+                                   FC = TF_zscores$log2FoldChange,
+                                   col = list(FC = col_fun,
+                                              percentage = col_fun2))
+  
+  
+  matrix <- TF_zscores[, !names(TF_zscores) %in% c("percentage", "variance","Motif",'TFs','TF','ID','motif','baseMean','log2FoldChange','lfcSE','pvalue','padj','TF_motif')]
+  rownames(matrix) <- rownames(TF_zscores)
+  #matrix <- apply(matrix, 2, as.numeric)
+  rownames(matrix) <- rownames(TF_zscores)
+  
+  motifs_heatmap <- Heatmap(as.matrix(matrix),
+                            col=viridis(100),
+                            cluster_columns = T,
+                            cluster_rows = T,
+                            show_row_names = T,
+                            row_km = 2,
+                            column_km = 2,
+                            row_km_repeats = 100,
+                            column_km_repeats = 100,
+                            right_annotation = perc_annotation,
+  
+  )
+  
+  pdf(paste0(figure_dir,'/figures/',ntop,'_Heatmap.pdf'),width=10,height=10,paper='special')
+  print(motifs_heatmap)
+  dev.off()
+  
+  
+  
+  
+  }
+```
+
+
+```{r}
+
+```
+
