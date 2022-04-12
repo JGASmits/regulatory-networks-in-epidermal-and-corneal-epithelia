@@ -1,0 +1,14 @@
+filename	genotype	type
+PKC19_RNA_1	KC	bulk
+PKC19_RNA_2	KC	bulk
+LSC_RNA_1	LSC	bulk
+LSC_RNA_2	LSC	bulk
+LSC_ouyang_1	LSC	bulk
+LSC_ouyang_2	LSC	bulk
+HKC_day0.1_RNA.Seq	KC	bulk
+HKC_day0.2_RNA.Seq	KC	bulk
+LSC159	LSC	scRNAseq	
+LSC177	LSC	scRNAseq	
+LSCabb1	LSC	scRNAseq	
+LSCabb2	LSC	scRNAseq
+PKC19	KC	scRNAseq

@@ -1,0 +1,10 @@
+filename	genotype	type
+AN1	an	polyA #LorenzPaper
+AN2	an	polyA #LorenzPaper
+CTR1	wt	polyA #LorenzPaper
+CTR2	wt	polyA #LorenzPaper
+LSCAN55	an	pseudobulk
+LSCAN40	an	pseudobulk
+LSC159	wt	pseudobulk
+LSC177	wt	pseudobulk
+LSCabb	wt	pseudobulk
