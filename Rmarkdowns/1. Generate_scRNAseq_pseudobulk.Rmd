@@ -1,0 +1,278 @@
+---
+title: "SCT assay before integration"
+author: "Jsmits"
+date: "January 17, 2020"
+output: html_document
+---
+
+Conda environment used: scrnaseq_monocle
+
+```{r setup, include = FALSE}
+knitr::opts_knit$set(root.dir = '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Publications/gene-regulatory-networks-in-epidermal-and-corneal-epithelia/')
+```
+# Loading the libraries  
+```{r message=FALSE, warning=FALSE,}
+library("devtools")
+library('ggplot2')
+library('plyr')
+library('dplyr')
+library('tidyr')
+library('mvoutlier')
+library('limma')
+library('knitr')
+library('SingleCellExperiment')
+library("scater")
+library("Seurat")
+library("scran")
+library("RColorBrewer")
+library("plot3D")
+library("stringr")
+library("SAVER")
+library("parallel")
+library('progeny')
+library("ComplexHeatmap") 
+library("org.Hs.eg.db")
+library("clusterProfiler") 
+library("ggpubr")
+library("circlize")
+library("cowplot")
+library('clustree')
+library('tidyverse')
+library('monocle')
+library('SeuratWrappers')
+library("SingleCellExperiment")
+```
+#Load costum functions
+
+```{r}
+work_dir <- '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Publications/gene-regulatory-networks-in-epidermal-and-corneal-epithelia/'
+
+#import costum written functions:
+source(paste0(work_dir, 'Rmarkdowns/R_functions/merge_countable_plates.R'))
+source(paste0(work_dir, 'Rmarkdowns/R_functions/generate_sce_from_df.R'))
+source(paste0(work_dir, 'Rmarkdowns/R_functions/sce_cell_filter_nmad.R'))
+source(paste0(work_dir, 'Rmarkdowns/R_functions/biomart_fetch_annotation.R'))
+source(paste0(work_dir, 'Rmarkdowns/R_functions/generate_pseudo_bulk.R'))
+source(paste0(work_dir, 'Rmarkdowns/R_functions/seurat_add_metadata.R'))
+source(paste0(work_dir, 'Rmarkdowns/R_functions/gg_color_hue.R'))
+```
+
+#set figure directory and create it if it does not exist
+```{r set_fig_dir}
+output_dir <- paste(paste0(work_dir,'/scrnaseq/'))
+figure_dir <- paste(output_dir, Sys.Date(), sep="")
+
+if (file.exists(output_dir)){print(paste(output_dir, 'exists, overwriting files if present'))} else {dir.create(file.path(output_dir))
+  print('generating output directory')
+}
+if (file.exists(figure_dir)){print(paste(figure_dir, 'exists, overwriting files if present'))} else {dir.create(file.path(figure_dir))
+  print('generating output directory')
+}
+```
+
+#Load all the files/variables
+```{r}
+cellranger_output_dir <- "/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/scRNAseq_pseudo_counts"
+MT_genes_file = paste0(work_dir, '/data/misc/MT_genes.txt')
+
+#QC settings
+total_counts_tresh = 2000
+total_feat_tresh = 1000
+```
+
+```{r message=FALSE, warning=FALSE,}
+# 
+# ## Filtering of the dataset ##
+# # Settings for genes
+# gene_tresh = 1
+# amount_cells_expr = 1
+# # Settings for cells
+# total_counts_tresh = 2000
+# total_feat_tresh = 1000
+# ERCC_pct_max <- 20
+# mt_pct_max <- 40
+# ## Seurat Normalization, HVG selection (vst) & Scaling (and Regression) ##
+# nHVG = 2000
+# # Regression performed on the following variables:
+# vars_to_regress = c("nCount_sf", "nFeature_sf",'pct_counts_MT') # If no regression desired: NULL
+# vars_cell_cycle = c("S.Score","G2M.Score")
+```
+
+Merge tables/countables from all plates into a single table
+Also perform plate QC per plate
+```{r echo=T, message=FALSE, warning=FALSE, results='hide'}
+location <- paste(cellranger_output_dir,'/expr/',sep="")
+#merges the output of the celseq2 pipeline into a single UMI countmatrix (in a datamatrix format)
+#also perform QC control and vizualize the QC in a PDF.
+  library('forcats')
+
+counts <- JS_merge_countable_plates(location, paste0(figure_dir,"/1.Plate_QC.pdf"))
+```
+#filter away bad quality cells
+```{r message=FALSE}
+nmads = 1.5
+counts_f <- as.data.frame(counts)
+sce<-SingleCellExperiment(assays = list(counts=counts_f))
+
+# Adding spike-in information:
+is.spike <- grepl("^ERCC", rownames(sce))
+sce <- splitAltExps(sce, ifelse(is.spike, "ERCC", "gene"))
+
+# Calculate the quality metrics:
+
+
+sce <-addPerCellQC(sce)
+libsize.drop <- isOutlier(as.numeric(sce$sum), nmads=nmads, type="both", log=TRUE)
+feature.drop <- isOutlier(as.numeric(sce$detected), nmads=nmads, type="both", log=TRUE)
+ERCC.drop <- isOutlier(as.numeric(sce$altexps_ERCC_sum), nmads=nmads, type="higher", log=TRUE)
+
+sce_f <- sce[,!(libsize.drop | feature.drop | ERCC.drop)]
+```
+
+Initialize the Seurat object with the raw (non-normalized data). 
+```{r echo=T, message=TRUE, warning=FALSE, results='hide'}
+seur_obj <- CreateSeuratObject(counts = counts(sce_f), project = "LSC", meta.data = as.data.frame(colData(sce)))
+```
+
+add sample metadata
+```{r}
+seur_obj <- JS_add_metadata(seur_obj, paste0(cellranger_output_dir,"/all_metadata_Seurat.csv"))
+```
+
+Vizualize QC cells
+```{r, results='hide'}
+Idents(seur_obj) <- "cell_type"
+pdf(paste(figure_dir,'/2.QC.pdf',sep="") ,width=10,height=6,paper='special')
+VlnPlot(object = seur_obj, features = c("nFeature_RNA"))
+VlnPlot(object = seur_obj, features = c("nCount_RNA")) 
+VlnPlot(object = seur_obj, features = c("altexps_ERCC_sum"))
+dev.off()
+```
+
+Generate aggregated bulk signal for good cells
+```{r}
+types <- unique(seur_obj$cell_type)
+pseudobulk_counts <- JS_generate_pseudo_bulk(seur_obj, types)
+write.table(pseudobulk_counts, file = paste(figure_dir,"Pseudo_counts.tsv"), sep = '\t')
+```
+
+#Perform cell-cycle scoring
+```{r}
+seur_obj <- NormalizeData(
+    object = seur_obj, assay = "RNA",
+    normalization.method = "LogNormalize", 
+    scale.factor = 10000
+)
+seur_obj <- FindVariableFeatures(seur_obj, selection.method = "vst")
+seur_obj <- ScaleData(seur_obj, features = rownames(seur_obj), assay = 'RNA', vars_to_regress = c( 'nCount_RNA','nFeature_RNA', 'altexps_ERCC_percent' ))
+seur_obj <- CellCycleScoring(seur_obj, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE)
+seur_obj <- RunPCA(seur_obj, features = c(cc.genes.updated.2019$s.genes, cc.genes.updated.2019$g2m.genes))
+pdf(paste(figure_dir,'3.cell_cycle_markers.pdf',sep="/") ,width=12,height=6,paper='special')
+Idents(seur_obj) <- "Phase"
+PCAPlot(seur_obj)
+Idents(seur_obj) <- "timepoint"
+PCAPlot(seur_obj)
+RidgePlot(seur_obj, features = c("S.Score", "G2M.Score"), ncol = 2, group.by = "cell_type")
+dev.off()
+```
+
+Vizualize the PCAs
+```{r}
+library(grid)
+library(gridExtra)
+
+seur_obj <- RunPCA(seur_obj, verbose = FALSE, npcs = 50)
+#mat <- Seurat::GetAssayData(seur_obj, assay = "sf", slot = "scale.data")
+mat <- Seurat::GetAssayData(seur_obj, assay = "RNA", slot = "scale.data")
+
+pca <- seur_obj[["pca"]]
+# Get the total variance:
+total_variance <- sum(matrixStats::rowVars(mat))
+eigValues = (pca@stdev)^2  ## EigenValues
+varExplained = eigValues / total_variance
+Stdev(object = seur_obj[["pca"]])[1]
+Idents(seur_obj) <- "cell_type"
+  pdf(paste0(figure_dir,'/4.Principle_components.pdf') ,width=12,height=6,paper='special')
+  print(ElbowPlot(seur_obj, ndims = 40))
+  for (pcs in c(1:20)){
+    pc1_viz <- pcs*2-1
+    pc2_viz <- pcs*2
+    y_label = paste0(paste0(paste0("PC",pc2_viz), ' stdev:  '),round(Stdev(object = seur_obj[["pca"]])[pc2_viz],3))
+    x_label = paste0(paste0(paste0("PC",pc1_viz), ' stdev:  '),round(Stdev(object = seur_obj[["pca"]])[pc1_viz],3))
+    PC_dimred <- DimPlot(seur_obj, reduction = "pca", dims = c(pc1_viz,pc2_viz))+labs(y= y_label, x = x_label)
+    PC1_genes <- DimHeatmap(seur_obj, dims = c(pc1_viz), fast = FALSE)
+    PC2_genes <- DimHeatmap(seur_obj, dims = c(pc2_viz), fast = FALSE)
+    final_plot <- grid.arrange(as_grob(PC_dimred),as_grob(PC2_genes),as_grob(PC1_genes),
+                                   ncol=2,
+                                   as.table=TRUE)
+                                   #heights=c(3,1))
+    print(final_plot)}
+  dev.off()
+DimPlot(seur_obj, reduction = "pca")
+
+```
+umap regular normalization
+```{r echo = FALSE}
+umap_col = "cell_type"
+umap_col2 = "Phase"
+# PCs used for different UMAP representations
+pcs_for_overview = c(3,4,5,6,7,8)
+# Generating a combined plot with only a legend in the first plotted (since this will be the same for the others)
+plot.list <- list()
+plot.list2 <- list()
+label.vector <- c(umap_col, umap_col2)
+j = 0
+
+## This could be done nicer with a loop probably, in which for each principle component of interest, there is a umap run, and 2 different labels are shown for it.
+
+for (i in (1:length(pcs_for_overview))){
+  seur_obj <- RunUMAP(seur_obj, dims = 1:pcs_for_overview[i])
+  dimnr <- as.character(pcs_for_overview[i])
+  print(dimnr)
+  if (i == 1){
+    plot.list[[dimnr]] <- DimPlot(seur_obj, reduction = "umap", group.by = label.vector[1], combine = TRUE) + ggtitle(paste0("UMAP 1:", dimnr))
+    plot.list2[[dimnr]] <- DimPlot(seur_obj, reduction = "umap", group.by = label.vector[2], combine = TRUE) + ggtitle(paste0("UMAP 1:", dimnr))
+    i = i + 1
+  }
+  else {
+    plot.list[[dimnr]] <- DimPlot(seur_obj, reduction = "umap", group.by = label.vector[1], combine = TRUE) + ggtitle(paste0("UMAP 1:", dimnr)) + theme(legend.position = "none")
+    plot.list2[[dimnr]] <- DimPlot(seur_obj, reduction = "umap", group.by = label.vector[2], combine = TRUE) + ggtitle(paste0("UMAP 1:", dimnr)) + theme(legend.position = "none")
+  i = i + 1
+  }
+}
+pdf(paste(figure_dir, "5a.norm_UMAPdiffsettings.pdf", sep = '/'), width = 20, height = 15)
+CombinePlots(plot.list, nrows = round(length(pcs_for_overview)/3))
+print(ElbowPlot(seur_obj))
+dev.off()
+```
+
+
+```{r}
+seur_obj <- RunUMAP(seur_obj, dims = 1:3)
+seur_obj <- FindNeighbors(seur_obj, dims = 1:3)
+#seur_obj <- FindClusters(seur_obj, verbose = FALSE, resolution = 0.5, graph.name = "sf_snn")
+seur_obj <- FindClusters(seur_obj, verbose = FALSE, resolution = 0.1, graph.name = "RNA_snn")
+
+seur_obj <- BuildClusterTree(seur_obj)
+  
+pdf(paste(figure_dir,'6a.norm_umap.pdf',sep="/") ,width=4,height=4,paper='special') 
+DimPlot(seur_obj, label = TRUE)
+DimPlot(seur_obj, label=FALSE, group.by= "cell_type")
+DimPlot(seur_obj, label=TRUE, group.by = 'seurat_clusters') + ggtitle("Louvain Clustering") + ggtitle(paste0("cluster resolution ", 0.5))
+PlotClusterTree(object = seur_obj)
+DimPlot(seur_obj, label=FALSE, group.by= "batch")+ ggtitle("batch")
+DimPlot(seur_obj, group.by = 'Phase')
+DimPlot(seur_obj, reduction = "pca",group.by = 'cell_type')
+DimPlot(seur_obj, reduction = "pca",group.by = 'Phase')
+
+FeaturePlot(seur_obj, features = 'S.Score', cols =c('white','dodgerblue3'))
+FeaturePlot(seur_obj, features = 'G2M.Score', cols =c('white','green4'))
+dev.off()
+```
+
+```{r}
+
+```
+
+
+

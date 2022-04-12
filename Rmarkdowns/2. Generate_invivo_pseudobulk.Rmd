@@ -1,0 +1,156 @@
+---
+title: "Limbus_epi_comp"
+author: "JGASmits"
+date: "12/04/2022"
+output: html_document
+---
+Conda environment used: 'scrnaseq_monocle'
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=12, fig.height=12) 
+knitr::opts_knit$set(root.dir = '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Publications/gene-regulatory-networks-in-epidermal-and-corneal-epithelia/')
+```
+
+```{r, load_libraries, message=FALSE, warning=FALSE}
+library('Seurat')
+library("devtools")
+library('ggplot2')
+library('plyr')
+library('dplyr')
+library('tidyr')
+library('mvoutlier')
+library('limma')
+library('knitr')
+library('SingleCellExperiment')
+library("scater")
+library("Seurat")
+library("scran")
+library("RColorBrewer")
+library("plot3D")
+library("stringr")
+library("SAVER")
+library("parallel")
+library('progeny')
+library("ComplexHeatmap") 
+library("org.Hs.eg.db")
+library("clusterProfiler") 
+library("ggpubr")
+library("circlize")
+library("cowplot")
+library('Seurat')
+library('clustree')
+library('tidyverse')
+library('monocle')
+library('SeuratWrappers')
+
+```
+
+```{r}
+work_dir <- '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Publications/gene-regulatory-networks-in-epidermal-and-corneal-epithelia'
+output_dir <- paste(paste0(work_dir,'/invivo_pseudobulk/'))
+figure_dir <- paste(output_dir, Sys.Date(), sep="")
+
+if (file.exists(output_dir)){print(paste(output_dir, 'exists, overwriting files if present'))} else {dir.create(file.path(output_dir))
+  print('generating output directory')
+}
+if (file.exists(figure_dir)){print(paste(figure_dir, 'exists, overwriting files if present'))} else {dir.create(file.path(figure_dir))
+}
+
+```
+
+## R Markdown
+
+```{r cars}
+Object_Epi_filepath <- "/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/scRNAseq/Epidermis_Ward.rds"
+Object_limbus_filepath <- "/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/scRNAseq/lakoRNAannotated.rds"
+```
+
+```{r}
+Epi_seurat <- readRDS(Object_Epi_filepath)
+Epi_seurat = subset(Epi_seurat, subset = disease == "HC")
+Idents(Epi_seurat) = Epi_seurat$annotation
+Epi_seurat$dataset <- Epi_seurat$sample
+Limbus_seurat <- readRDS(Object_limbus_filepath)
+Idents(Limbus_seurat) = Limbus_seurat$costum_clustering
+Limbus_seurat$annotation = Limbus_seurat$costum_clustering
+Limbus_seurat$dataset <- Limbus_seurat$orig.ident
+```
+
+```{r}
+pdf(paste0(figure_dir,'/atwood_Umap.pdf') ,width=6,height=6,paper='special')
+DimPlot(Epi_seurat, label=FALSE)+theme(legend.position=c(0.85,0))
+FeaturePlot(Epi_seurat, features = c("KRT14", "KRT5", "POSTN", "PTTG1",'FLG'))
+dev.off()
+
+LSC_subsets <- Limbus_seurat[,(Limbus_seurat$costum_clustering == 'LPCs')]
+
+pdf(paste0(figure_dir,'/LAKO_Umap_PAX6_ELF.pdf') ,width=24,height=6,paper='special')
+FeaturePlot(LSC_subsets, features = c("PAX6", "ELF3"), blend = TRUE)
+FeatureScatter(LSC_subsets, feature1 = "PAX6", feature2 = "ELF3")
+DoHeatmap(LSC_subsets, features = c('PAX6','ELF3')) 
+dev.off()
+
+
+pdf(paste0(figure_dir,'/LAKO_Umap.pdf') ,width=6,height=6,paper='special')
+DimPlot(Limbus_seurat, label=FALSE)+theme(legend.position=c(0.85,0))
+FeaturePlot(Limbus_seurat, features = c("S100A2", "PAX6", "TP63", "CPVL"))
+FeaturePlot(Limbus_seurat, features = c("PAX6", "ELF3"), blend = TRUE)
+dev.off()
+```
+
+#Lets generate pseudobulk
+
+```{r}
+#lets first subset the seurat object to only contain the cell types of interests:
+LPNCs_seurat <- Limbus_seurat[,(Limbus_seurat$costum_clustering == 'LPCs')]
+
+#lets loop over the technical replica's and print how many cells each replica has
+#let merge lako5,6,7&8 since those replicas combined contain only 400 LSCs cells#
+# LPNCs_seurat$dataset <- gsub('lako8', 'lako2',LPNCs_seurat$dataset)
+# LPNCs_seurat$dataset <- gsub('lako7', 'lako2',LPNCs_seurat$dataset)
+# LPNCs_seurat$dataset <- gsub('lako6', 'lako2',LPNCs_seurat$dataset)
+# LPNCs_seurat$dataset <- gsub('lako5', 'lako2',LPNCs_seurat$dataset)
+
+#lets output all the replicas as pseudobulK:
+pseudobulk_df <- as.data.frame(row.names(LPNCs_seurat@assays$RNA@counts))
+colnames(pseudobulk_df) <- 'gene'
+
+for (replica in unique(LPNCs_seurat$dataset)){
+  print(replica)
+  pseudobulk_df[[replica]] <- rowSums(as.data.frame(LPNCs_seurat@assays$RNA@counts)[LPNCs_seurat$dataset== replica])
+}
+row.names(pseudobulk_df) <- pseudobulk_df$gene
+pseudobulk_df$gene <- NULL
+write.table(pseudobulk_df, file = paste0(work_dir,'/data/RNAseq_files/basalLSCs_replicas_pseudobulk_Lako.tsv'), sep = '\t')
+```
+
+
+```{r}
+#lets first subset the seurat object to only contain the cell types of interests:
+basalKCs_seurat <- Epi_seurat[,(Epi_seurat$annotation == 'BASAL I' | Epi_seurat$annotation == 'BASAL II' | Epi_seurat$annotation == 'BASAL III' )]
+
+basalKCs_seurat <- CellCycleScoring(basalKCs_seurat, s.features = cc.genes.updated.2019$s.genes, g2m.features = cc.genes.updated.2019$g2m.genes, set.ident = TRUE)
+
+#lets perform cell cycle scoring and remove all non G1 cells:
+DimPlot(basalKCs_seurat, label=FALSE)+theme(legend.position=c(0.85,0))
+DimPlot(Epi_seurat, label=FALSE)+theme(legend.position=c(0.85,0))
+
+G1_KCs_seurat <- basalKCs_seurat[,basalKCs_seurat$Phase == 'G1']
+
+#lets output all the replicas as pseudobulK:
+pseudobulk_df <- as.data.frame(row.names(G1_KCs_seurat@assays$RNA@counts))
+colnames(pseudobulk_df) <- 'gene'
+for (replica in unique(G1_KCs_seurat$dataset)){
+  print(replica)
+  pseudobulk_df[[replica]] <- rowSums(as.data.frame(G1_KCs_seurat@assays$RNA@counts)[G1_KCs_seurat$dataset== replica])
+}
+row.names(pseudobulk_df) <- pseudobulk_df$gene
+pseudobulk_df$gene <- NULL
+write.table(pseudobulk_df, file = paste0(work_dir,'/data/RNAseq_files/basalKCs_replicas_pseudobulk_Atwood.tsv'), sep = '\t')
+```
+
+```{r}
+
+```
+
+
