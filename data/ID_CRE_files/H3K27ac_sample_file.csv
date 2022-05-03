@@ -1,0 +1,6 @@
+samples,rep,condition
+H3K27ac_bam_file_KC1,1,KC
+H3K27ac_bam_file_KC2,2,KC
+H3K27ac_bam_file_LSC1,1,LSC
+H3K27ac_bam_file_LSC2,2,LSC
+H3K27ac_bam_file_LSC3,3,LSC

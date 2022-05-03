@@ -1,0 +1,9 @@
+filename	file_location
+TF2motif	/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Publications/gene-regulatory-networks-in-epidermal-and-corneal-epithelia/data/gimme_motifs/gimme.vertebrate.v5.0.motif2factors.txt
+motif_pwm	/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Publications/gene-regulatory-networks-in-epidermal-and-corneal-epithelia/data/gimme_motifs/gimme.vertebrate.v5.0.pfm
+transcriptome	/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Publications/gene-regulatory-networks-in-epidermal-and-corneal-epithelia/data/RNAseq_files/all_KC_LSC_genes.csv
+CREregion_data	/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/analysis/ID_CREs/2021-28-07/All_CREs_data.csv
+genome	/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Epi_fate_specifiers/genomes/GRCh38.p13/GRCh38.p13.fa
+
+
+#CREregion_data	ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Publications/gene-regulatory-networks-in-epidermal-and-corneal-epithelia/data/Motif_enrichment_files/all_CREs_data.csv

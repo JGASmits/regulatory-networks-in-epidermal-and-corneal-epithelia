@@ -80,8 +80,8 @@ if (file.exists(figure_dir)){print(paste(figure_dir, 'exists, overwriting files 
 ```{r}
 count_table_seq2science <- paste0(work_dir,'data/RNAseq_files/GRCh38.p13-counts.tsv')
 pseudocount_table <- paste0(work_dir,'data/RNAseq_files/pseudobulk.tsv')
-seq2science_sample_file <- paste0(work_dir,'seq2science_files/RNAseq/samples.tsv')
-gene_id_file <- paste0(work_dir,'seq2science_files/RNAseq/gene_id2name.tsv')
+seq2science_sample_file <- paste0(work_dir,'data/RNAseq_files/seq2science_files/RNAseq/samples.tsv')
+gene_id_file <- paste0(work_dir,'data/RNAseq_files/seq2science_files/RNAseq/gene_id2name.tsv')
 chromXY_genelist_file <- paste0(work_dir,'data/misc/chrXY.txt')
 RNAseq_comp_info_file <- paste0(work_dir,'data/RNAseq_files/RNAseq_comparisons_info.csv')
 ```

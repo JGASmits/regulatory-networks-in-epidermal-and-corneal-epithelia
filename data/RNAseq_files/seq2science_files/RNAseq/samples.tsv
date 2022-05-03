@@ -1,0 +1,32 @@
+sample	assembly	descriptive_name	celltype
+#my own RNAseq data:
+PKC19_RNA_1	GRCh38.p13	PKC19_RNA_1	KC
+PKC19_RNA_2	GRCh38.p13	PKC19_RNA_2	KC
+PRIM_RNA_1	GRCh38.p13	LSC_RNA_1	LSC
+PRIM_RNA_2	GRCh38.p13	LSC_RNA_2	LSC
+
+#Nature paper TD: Core transcription regulatory circuitry orchestrates corneal epithelial homeostasis
+GSM4728059	GRCh38.p13	LSC_ouyang_1	LSC
+GSM4728060	GRCh38.p13	LSC_ouyang_2	LSC
+
+#data Lorenz
+GSM3093490	GRCh38.p13	polyA_LSC_wt1	wt_LSC
+GSM3093491	GRCh38.p13	polyA_LSC_wt2	wt_LSC
+GSM3093492	GRCh38.p13	polyA_LSC_AN1	an_LSC
+GSM3093493	GRCh38.p13	polyA_LSC_AN2	an_LSC
+
+#Paper Amberdam Modeling of aniridia-related keratopathy by CRISPR/Cas9 genome editing of human limbal epithelial cells and rescue by recombinant PAX6 protein
+GSM4134291	Limbal-TERT-wt-34-12594	tert_expA1	tert
+GSM4134292	Limbal-TERT-wt-35-12595	tert_expA2	tert
+GSM4134293	Limbal-TERT-cloneW-49-12596	tert_expB1	tert
+GSM4134294	Limbal-TERT-cloneW-50-12597	tert_expB2	tert
+
+#p63 controls the enhancer landscape during keratinocyte differentiation
+GSM2597280	GRCh38.p13	HKC_day0-1_RNA-Seq	KC
+GSM2597284	GRCh38.p13	HKC_day0-2_RNA-Seq	KC
+GSM2597281	GRCh38.p13	HKC_day2-1_RNA-Seq	KC_d2
+GSM2597285	GRCh38.p13	HKC_day2-2_RNA-Seq	KC_d2
+GSM2597282	GRCh38.p13	HKC_day4-1_RNA-Seq	KC_d4
+GSM2597286	GRCh38.p13	HKC_day4-2_RNA-Seq	KC_d4
+GSM2597283	GRCh38.p13	HKC_day7-1_RNA-Seq	KC_d7
+GSM2597287	GRCh38.p13	HKC_day7-2_RNA-Seq	KC_d7
