@@ -22,4 +22,5 @@ After running motif enrichment for enrichment of genes close to these peaks acti
 "Rmarkdowns/4. CREs_MotifEnrichment"
 
 6. GRN analsyis using ananse (conda env ID_CRE_env)
+Install ANANSE from https://github.com/JGASmits/ANANSE, using the 'development installation' option.
 Follow the steps written in "notebooks/3_PeakPred_ananse.ipynb" to perform GRN analysis. Change the file locations in data/Ananse_files/Cell_type_files.tsv where needed.
