@@ -6,6 +6,7 @@ For regenerating all the figures from the manuscript, follow the subsequent step
 1. Download and pre-process all the ATAC, RNA, scRNAseq, Chipseq (narrow) and Chispeq broad data using seq2science (0.7.1). All used sample and config files are present in the respective 'data' folders. Change the path to the fastq directory and other settings where needed for your specific setup. For more information regarding running seq2science, see: https://github.com/vanheeringen-lab/seq2science
 
 2. install conda and generate conda environments from the yaml files present in 'conda yamls/'
+For more info regarding how to use and install conda, see: https://docs.conda.io/en/latest/
 
 3. RNAseq analysis (conda env bulk_rna_seq)
 Optional: regenerate the pseudobulk files from the scRNAseq-pseudobulk files and or in invivo samples using the code in: "Rmarkdown/1. Generate_scRNAseq_pseudobulk" and "Rmarkdown/2. Generate_invivo_pseudobulk.Rmd".
