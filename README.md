@@ -10,7 +10,7 @@ For regenerating all the figures from the manuscript, follow the subsequent step
 3. RNAseq analysis (conda env bulk_rna_seq)
 Optional: regenerate the pseudobulk files from the scRNAseq-pseudobulk files and or in invivo samples using the code in: "Rmarkdown/1. Generate_scRNAseq_pseudobulk" and "Rmarkdown/2. Generate_invivo_pseudobulk.Rmd".
 Alternatively to skip pre-processsing use the present counttable in data/RNA_seqfiles/merged_counttables.tsv
-Follow the steps written in "Rmarkdown/3. Bulk_RNA_seq.Rmd" to perform bulkRNA seq analysis (leading to the figure 1 figures).
+Follow the steps written in "Rmarkdown/3. Bulk_RNA_seq.Rmd" to perform bulkRNA seq analysis. This should first run the bulk comparison betwen KCs and LSCs (fig1), followed by the wt-LSC Anirdia comparison (fig1), while finally running the invivo pseudobulk comparison between basal KCs and basal LSCs (preperation for fig4)
 
 4. Identify Cis-Regulatory Elements  (conda env ID_CRE_env)
 Optional:Follow the steps written in "notebooks/1_Identify_CREs.ipynb" to identify cis regulatory elements. Change the file locations in data/ID_CRE_files/ where needed.
@@ -21,3 +21,5 @@ Follow the steps written in "notebooks/2_Motif_enrichment.ipynb" to perform moti
 After running motif enrichment for enrichment of genes close to these peaks activate the conda environment bulk_rna_seq and follow the steps in: 
 "Rmarkdowns/4. CREs_MotifEnrichment"
 
+6. GRN analsyis using ananse (conda env ID_CRE_env)
+Follow the steps written in "notebooks/3_PeakPred_ananse.ipynb" to perform GRN analysis. Change the file locations in data/Ananse_files/Cell_type_files.tsv where needed.
