@@ -18,3 +18,6 @@ Alternatively skip this step and use data/Motif_enrichment_files/all_CREs_data.c
 
 5. Perform motif enrichement analysis (conda env ID_CRE_env)
 Follow the steps written in "notebooks/2_Motif_enrichment.ipynb" to perform motif enrichment analysis. Change the file locations in data/ID_CRE_files/Motif_enrichment_files where needed.
+After running motif enrichment for enrichment of genes close to these peaks activate the conda environment bulk_rna_seq and follow the steps in: 
+"Rmarkdowns/4. CREs_MotifEnrichment"
+
