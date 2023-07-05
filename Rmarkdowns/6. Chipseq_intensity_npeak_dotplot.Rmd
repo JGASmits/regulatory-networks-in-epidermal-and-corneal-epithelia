@@ -1,0 +1,145 @@
+---
+title: "fig5_dotplot"
+output: html_notebook
+---
+
+lets load the libraries needed
+Conda environment used: 'bulk_rna_seq'
+
+```{r}
+library(tidyverse)
+library(ggdendro)
+library(cowplot)
+library(ggtree)
+library(patchwork) 
+library(ComplexHeatmap)
+library(circlize)
+#install.packages('ggdendro')
+```
+
+load the chipseq data
+```{r}
+knitr::opts_chunk$set(fig.width=24, fig.height=24) 
+
+data_file = '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Ananse_test_data/analysis/peakpred_V10/targetgenes/chipseq_int_npeak_matrix.tsv'
+chipseq_inf_df = read.csv(data_file, sep = '\t')
+#colnames(chipseq_inf_df) <- c('Gene', 'cluster','cell_ct','count')
+# 
+markers <- chipseq_inf_df$gene_name %>% unique()
+
+chipseq_inf_df_filtered <- chipseq_inf_df %>% filter(gene_name %in% markers) %>%  filter(npeaks > 0, chip_intensity > 0) 
+
+plot1 <- ggplot(aes(x=variable, y = gene_name, color = chip_intensity, size = npeaks),
+               data = chipseq_inf_df_filtered) +
+  geom_point() + 
+  scale_color_viridis_c(name = 'distance weighted Zscore') +
+  cowplot::theme_cowplot() + 
+  theme(axis.line  = element_blank()) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ylab('') +
+  theme(axis.ticks = element_blank()) +
+  scale_color_gradientn(colours = viridis::viridis(20), limits = c(0,6), oob = scales::squish, name = 'distance weighted Zscore')
+
+plot1
+
+table(chipseq_inf_df$variable)
+```
+
+```{r}
+# make data square to calculate euclidean distance
+mat <- chipseq_inf_df_filtered %>% 
+  select(-npeaks) %>%  # drop unused columns to faciliate widening
+  pivot_wider(names_from = variable, values_from = chip_intensity) %>% 
+  data.frame() # make df as tibbles -> matrix annoying
+row.names(mat) <- mat$gene_name  # put gene in `row`
+mat <- mat[,-1] #drop gene column as now in rows
+#mat <- apply(mat, 2, as.numeric)
+mat[is.na(mat)] <- 0
+mat <- mat %>% as.matrix()
+
+clust <- hclust(dist(mat)) # hclust with distance matrix
+
+ddgram <- as.dendrogram(clust) # create dendrogram
+ggtree_plot <- ggtree::ggtree(ddgram)
+ggtree_plot
+```
+
+```{r}
+
+#reorder dataframe
+#chipseq_inf_df_filtered <- chipseq_inf_df_filtered[match(clust$labels[clust$order], chipseq_inf_df_filtered$gene_name),]
+chipseq_inf_df_filtered <- chipseq_inf_df_filtered %>%  mutate(gene_name = factor(gene_name, levels = clust$labels[clust$order]))
+         
+dotplot <- chipseq_inf_df_filtered %>% 
+  ggplot(aes(x=variable, y = gene_name, color = chip_intensity, size = npeaks)) + 
+  geom_point() + 
+  cowplot::theme_cowplot() + 
+  theme(axis.line  = element_blank()) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1)) +
+  ylab('') +
+  theme(axis.ticks = element_blank()) +
+  scale_color_gradientn(colours = viridis::viridis(20), limits = c(0,3), oob = scales::squish, name = 'distance weighted Zscore')
+
+pdf("/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Ananse_test_data/analysis/peakpred_V10/targetgenes/chipseq_disease_genes.pdf", width=6, height=8,paper='special') 
+plot_grid(ggtree_plot, NULL, dotplot, nrow = 1, rel_widths = c(0.5,-0.1, 2), align = 'h')
+dev.off()
+
+plot_grid(ggtree_plot, NULL, dotplot, nrow = 1, rel_widths = c(0.5,-0.1, 2), align = 'h')
+```
+```{r}
+genes_ordered <- clust$labels[clust$order][rev(1:length(clust$labels[clust$order]))]
+```
+
+
+Lets also annotate the genes and their presence in the various significant enrichined diseases
+```{r}
+sig_enriched <- read.csv2('/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Ananse_test_data/analysis/peakpred_V10/targetgenes/significant_enriched.tsv', sep = '\t')
+diseases_2_check <- unique(sig_enriched$disease)
+```
+
+Lets load the disease gene database
+```{r}
+data_file2 = '/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Ananse_test_data/analysis/peakpred_V10/targetgenes/chipseq_int_npeak_matrix_annotated.tsv'
+chipseq_inf_df_annotated = read.csv(data_file2, sep = '\t')
+chipseq_inf_df_annotated <- chipseq_inf_df_annotated[!colnames(chipseq_inf_df_annotated) %in% c('variable','npeaks','chip_intensity')]
+```
+
+```{r}
+chipseq_inf_df_annotated <- chipseq_inf_df_annotated[!duplicated(chipseq_inf_df_annotated),]
+rownames(chipseq_inf_df_annotated) <- chipseq_inf_df_annotated$gene_name
+chipseq_inf_df_annotated$gene_name <- NULL
+chipseq_inf_df_annotated <- as.matrix(chipseq_inf_df_annotated)
+
+chipseq_inf_df_annotated[chipseq_inf_df_annotated == "False"] <- 0
+chipseq_inf_df_annotated[chipseq_inf_df_annotated == "True"] <- 1
+
+mat <- chipseq_inf_df_annotated
+mat <- mat[match(genes_ordered, rownames(mat)),]
+class(mat) <- 'numeric'
+```
+#lets make an annotation heatmap
+```{r}
+col_fun = colorRamp2(c(1,0), c('black','light grey'))
+
+#pdf("/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Ananse_test_data/analysis/peakpred_V10/targetgenes/chipseq_disease_genes_annotated.pdf", width=3, height=8,paper='special') 
+#Heatmap(mat, cluster_rows = F, cluster_columns = T, col = col_fun, show_column_dend = F)
+#dev.off()
+
+Heatmap(mat, cluster_rows = F, cluster_columns = T, col = col_fun, show_column_dend = F)
+```
+
+#lets make an annotation heatmap
+```{r}
+col_fun = colorRamp2(c(1,0), c('black','light grey'))
+
+pdf("/ceph/rimlsfnwi/data/moldevbio/zhou/jsmits/Ananse_test_data/analysis/peakpred_V10/targetgenes/chipseq_disease_genes_annotated.pdf", width=3, height=8,paper='special') 
+Heatmap(mat, cluster_rows = F, cluster_columns = T, col = col_fun, show_column_dend = F)
+dev.off()
+
+Heatmap(mat, cluster_rows = F, cluster_columns = T, col = col_fun, show_column_dend = F)
+```
+
+```{r}
+
+```
+
